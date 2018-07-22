@@ -26,13 +26,11 @@ import com.gigaspaces.internal.cluster.node.impl.filters.IReplicationInFilter;
 import com.gigaspaces.internal.cluster.node.impl.groups.handshake.ConnectChannelHandshakeRequest;
 import com.gigaspaces.internal.cluster.node.impl.groups.handshake.ConnectChannelHandshakeResponse;
 import com.gigaspaces.internal.cluster.node.impl.groups.handshake.IHandshakeIteration;
+import com.gigaspaces.internal.cluster.node.impl.packets.BatchReplicatedDataPacket;
 import com.gigaspaces.internal.cluster.node.impl.packets.IReplicationOrderedPacket;
 import com.gigaspaces.internal.cluster.node.impl.processlog.IProcessLogHandshakeResponse;
 import com.gigaspaces.internal.cluster.node.impl.replica.SpaceReplicaState;
-import com.gigaspaces.internal.cluster.node.impl.router.IReplicationMonitoredConnection;
-import com.gigaspaces.internal.cluster.node.impl.router.IReplicationRouter;
-import com.gigaspaces.internal.cluster.node.impl.router.ReplicationEndpointDetails;
-import com.gigaspaces.internal.cluster.node.impl.router.RouterStubHolder;
+import com.gigaspaces.internal.cluster.node.impl.router.*;
 import com.gigaspaces.internal.utils.StringUtils;
 import com.gigaspaces.internal.utils.collections.CopyOnUpdateMap;
 import com.gigaspaces.logger.Constants;
@@ -285,6 +283,16 @@ public abstract class AbstractReplicationTargetGroup
             RouterStubHolder sourceRouterStubHolder) {
         IReplicationMonitoredConnection sourceConnection = _replicationRouter.getDirectConnection(sourceRouterStubHolder);
         return sourceConnection;
+    }
+
+    public Object processCompressedBatch(String sourceMemberLookupName,
+                               Object sourceUniqueId, BatchReplicatedDataPacket batch) {
+        validNotClosed();
+
+        AbstractReplicationTargetChannel channel = getCorrespondingChannel(sourceMemberLookupName,
+                sourceUniqueId);
+
+        return channel.processCompressedBatch(batch);
     }
 
     public Object processBatch(String sourceMemberLookupName,

@@ -21,9 +21,11 @@ import com.gigaspaces.internal.cluster.node.impl.backlog.IIdleStateData;
 import com.gigaspaces.internal.cluster.node.impl.groups.handshake.ConnectChannelHandshakeRequest;
 import com.gigaspaces.internal.cluster.node.impl.groups.handshake.ConnectChannelHandshakeResponse;
 import com.gigaspaces.internal.cluster.node.impl.groups.handshake.IHandshakeIteration;
+import com.gigaspaces.internal.cluster.node.impl.packets.BatchReplicatedDataPacket;
 import com.gigaspaces.internal.cluster.node.impl.packets.IReplicationOrderedPacket;
 import com.gigaspaces.internal.cluster.node.impl.processlog.IProcessLogHandshakeResponse;
 import com.gigaspaces.internal.cluster.node.impl.replica.SpaceReplicaState;
+import com.gigaspaces.internal.cluster.node.impl.router.AbstractGroupNameReplicationPacket;
 import com.gigaspaces.internal.cluster.node.impl.router.RouterStubHolder;
 
 import java.util.List;
@@ -57,6 +59,9 @@ public interface IReplicationTargetGroup {
 
     void processHandshakeIteration(String sourceMemberLookupName,
                                    Object sourceUniqueId, IHandshakeIteration handshakeIteration);
+
+    Object processCompressedBatch(String sourceMemberLookupName,
+                                  Object sourceUniqueId, BatchReplicatedDataPacket batch);
 
     Object processBatch(String sourceMemberLookupName,
                         Object sourceUniqueId, List<IReplicationOrderedPacket> packets);

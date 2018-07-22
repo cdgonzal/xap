@@ -634,7 +634,6 @@ public abstract class AbstractReplicationSourceChannel
         try {
             BatchReplicatedDataPacket batchPacket = replicatedDataPacketResource.getBatchPacket();
             batchPacket.setBatch(packets);
-
             Object wiredProcessResult = getConnection().dispatch(batchPacket);
             IProcessResult processResult = _groupBacklog.fromWireForm(wiredProcessResult);
 
@@ -813,6 +812,7 @@ public abstract class AbstractReplicationSourceChannel
         try {
             BatchReplicatedDataPacket batchPacket = replicatedDataPacketResource.getBatchPacket();
             batchPacket.setBatch(finalPackets);
+            if(batchPacket.isCompressable()) batchPacket.compressBatch();
 
             AsyncFuture<Object> processResultFuture = getConnection().dispatchAsync(batchPacket);
             final ReplicateFuture resultFuture = new ReplicateFuture();

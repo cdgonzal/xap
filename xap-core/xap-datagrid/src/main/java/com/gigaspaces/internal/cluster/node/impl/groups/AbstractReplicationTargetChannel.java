@@ -26,16 +26,14 @@ import com.gigaspaces.internal.cluster.node.impl.config.TargetGroupConfig;
 import com.gigaspaces.internal.cluster.node.impl.filters.IReplicationInFilter;
 import com.gigaspaces.internal.cluster.node.impl.filters.IReplicationInFilterCallback;
 import com.gigaspaces.internal.cluster.node.impl.groups.handshake.IHandshakeIteration;
+import com.gigaspaces.internal.cluster.node.impl.packets.BatchReplicatedDataPacket;
 import com.gigaspaces.internal.cluster.node.impl.packets.CheckSourceChannelPacket;
 import com.gigaspaces.internal.cluster.node.impl.packets.IReplicationOrderedPacket;
 import com.gigaspaces.internal.cluster.node.impl.packets.data.IReplicationPacketData;
 import com.gigaspaces.internal.cluster.node.impl.processlog.IProcessLogHandshakeResponse;
 import com.gigaspaces.internal.cluster.node.impl.processlog.IProcessResult;
 import com.gigaspaces.internal.cluster.node.impl.processlog.IReplicationTargetProcessLog;
-import com.gigaspaces.internal.cluster.node.impl.router.IConnectionStateListener;
-import com.gigaspaces.internal.cluster.node.impl.router.IConnectivityCheckListener;
-import com.gigaspaces.internal.cluster.node.impl.router.IReplicationMonitoredConnection;
-import com.gigaspaces.internal.cluster.node.impl.router.ReplicationEndpointDetails;
+import com.gigaspaces.internal.cluster.node.impl.router.*;
 import com.gigaspaces.internal.utils.StringUtils;
 import com.gigaspaces.time.SystemTime;
 import com.j_spaces.core.cluster.IReplicationFilterEntry;
@@ -125,9 +123,28 @@ public abstract class AbstractReplicationTargetChannel
         return _sourceEndpointDetails.getUniqueId();
     }
 
+    public Object processCompressedBatch(BatchReplicatedDataPacket batch) {
+        List<IReplicationOrderedPacket> packets = batch.decompressBatch();
+
+        if (_specificLogger.isLoggable(Level.FINEST)) {
+            _specificLogger.finest("PACKETS SIZE: " + packets.size() + " Incoming packets: " + ReplicationLogUtils.packetsToLogString(packets));
+        }
+
+        updateLastProcessTimeStamp();
+
+
+        // Process packets
+        IProcessResult processResult = _processLog.processBatch(getSourceLookupName(),
+                packets,
+                _isInFiltered ? this
+                        : null);
+        logProcessResultIfNecessary(processResult, packets);
+        return _processLog.toWireForm(processResult);
+    }
+
     public Object processBatch(List<IReplicationOrderedPacket> packets) {
         if (_specificLogger.isLoggable(Level.FINEST))
-            _specificLogger.finest("Incoming packets: " + ReplicationLogUtils.packetsToLogString(packets));
+            _specificLogger.finest("PACKETS SIZE: " + packets.size() + " Incoming packets: " + ReplicationLogUtils.packetsToLogString(packets));
 
         updateLastProcessTimeStamp();
 
@@ -462,5 +479,4 @@ public abstract class AbstractReplicationTargetChannel
                 return true;
         }
     }
-
 }
