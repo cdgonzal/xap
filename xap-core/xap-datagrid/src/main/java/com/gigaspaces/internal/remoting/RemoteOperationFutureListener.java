@@ -169,6 +169,7 @@ public class RemoteOperationFutureListener<T extends RemoteOperationResult> impl
         }
         //Trigger listener outside of lock, avoid potential deadlocks
         if (listener != null) {
+            //Issue GS-13614 - PostponedAsyncOperationsQueue should delegate the invoke listener to an LRMI thread
             if(Thread.currentThread().getName().contains(THREADS_NAME_PREFIX)) {
                 final AsyncFutureListener<Object> listnr = listener;
                 LRMIRuntime.getRuntime().getThreadPool().execute(new ContextClassLoaderRunnable() {
