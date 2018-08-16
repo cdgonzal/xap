@@ -60,9 +60,6 @@ public interface IReplicationTargetGroup {
     void processHandshakeIteration(String sourceMemberLookupName,
                                    Object sourceUniqueId, IHandshakeIteration handshakeIteration);
 
-    Object processCompressedBatch(String sourceMemberLookupName,
-                                  Object sourceUniqueId, BatchReplicatedDataPacket batch);
-
     Object processBatch(String sourceMemberLookupName,
                         Object sourceUniqueId, List<IReplicationOrderedPacket> packets);
 

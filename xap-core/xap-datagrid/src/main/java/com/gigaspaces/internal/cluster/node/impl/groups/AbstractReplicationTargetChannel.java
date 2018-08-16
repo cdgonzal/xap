@@ -123,25 +123,6 @@ public abstract class AbstractReplicationTargetChannel
         return _sourceEndpointDetails.getUniqueId();
     }
 
-    public Object processCompressedBatch(BatchReplicatedDataPacket batch) {
-        List<IReplicationOrderedPacket> packets = batch.decompressBatch();
-
-        if (_specificLogger.isLoggable(Level.FINEST)) {
-            _specificLogger.finest("PACKETS SIZE: " + packets.size() + " Incoming packets: " + ReplicationLogUtils.packetsToLogString(packets));
-        }
-
-        updateLastProcessTimeStamp();
-
-
-        // Process packets
-        IProcessResult processResult = _processLog.processBatch(getSourceLookupName(),
-                packets,
-                _isInFiltered ? this
-                        : null);
-        logProcessResultIfNecessary(processResult, packets);
-        return _processLog.toWireForm(processResult);
-    }
-
     public Object processBatch(List<IReplicationOrderedPacket> packets) {
         if (_specificLogger.isLoggable(Level.FINEST))
             _specificLogger.finest("PACKETS SIZE: " + packets.size() + " Incoming packets: " + ReplicationLogUtils.packetsToLogString(packets));

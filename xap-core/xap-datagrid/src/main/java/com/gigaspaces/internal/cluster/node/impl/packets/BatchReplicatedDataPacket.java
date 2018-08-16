@@ -71,7 +71,7 @@ public class BatchReplicatedDataPacket
     @Override
     public Object accept(IIncomingReplicationFacade replicationFacade) {
         IReplicationTargetGroup targetGroup = replicationFacade.getReplicationTargetGroup(getGroupName());
-        if(_compressed) return targetGroup.processCompressedBatch(getSourceLookupName(), getSourceUniqueId(), this);
+        if(_compressed) return targetGroup.processBatch(getSourceLookupName(), getSourceUniqueId(), decompressBatch());
         return targetGroup.processBatch(getSourceLookupName(), getSourceUniqueId(), _batch);
     }
 
@@ -149,7 +149,7 @@ public class BatchReplicatedDataPacket
         while(it.hasNext()){
             IReplicationOrderedPacket packet = it.next();
 
-            int packetKeyRange = (int) (packet.getEndKey() - packet.getKey() + 1);
+            long packetKeyRange = packet.getEndKey() - packet.getKey() + 1;
 
             if(packet.isDiscardedPacket()){
                 it.remove();

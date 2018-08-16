@@ -285,16 +285,6 @@ public abstract class AbstractReplicationTargetGroup
         return sourceConnection;
     }
 
-    public Object processCompressedBatch(String sourceMemberLookupName,
-                               Object sourceUniqueId, BatchReplicatedDataPacket batch) {
-        validNotClosed();
-
-        AbstractReplicationTargetChannel channel = getCorrespondingChannel(sourceMemberLookupName,
-                sourceUniqueId);
-
-        return channel.processCompressedBatch(batch);
-    }
-
     public Object processBatch(String sourceMemberLookupName,
                                Object sourceUniqueId, List<IReplicationOrderedPacket> packets) {
         validNotClosed();
