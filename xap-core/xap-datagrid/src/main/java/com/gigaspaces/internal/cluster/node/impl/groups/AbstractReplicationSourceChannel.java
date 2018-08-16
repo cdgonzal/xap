@@ -811,8 +811,10 @@ public abstract class AbstractReplicationSourceChannel
         boolean delegatedToAsync = false;
         try {
             BatchReplicatedDataPacket batchPacket = replicatedDataPacketResource.getBatchPacket();
+
             batchPacket.setBatch(finalPackets);
-            if(batchPacket.isCompressable()) batchPacket.compressBatch();
+
+            batchPacket.compressBatch();
 
             AsyncFuture<Object> processResultFuture = getConnection().dispatchAsync(batchPacket);
             final ReplicateFuture resultFuture = new ReplicateFuture();

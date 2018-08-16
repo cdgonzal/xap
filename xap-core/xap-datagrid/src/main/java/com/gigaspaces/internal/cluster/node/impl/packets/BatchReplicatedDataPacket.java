@@ -64,10 +64,6 @@ public class BatchReplicatedDataPacket
         return _compressed;
     }
 
-    public boolean isCompressable() {
-        return _compressable;
-    }
-
     @Override
     public Object accept(IIncomingReplicationFacade replicationFacade) {
         IReplicationTargetGroup targetGroup = replicationFacade.getReplicationTargetGroup(getGroupName());
@@ -142,7 +138,7 @@ public class BatchReplicatedDataPacket
 
 //        System.out.println(toString());
 
-        if(_compressed) return;
+        if(_compressed || !_compressable) return;
 
         Iterator<IReplicationOrderedPacket> it = _batch.listIterator();
 
