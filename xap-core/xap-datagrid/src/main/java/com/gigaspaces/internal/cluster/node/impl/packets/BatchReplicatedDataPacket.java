@@ -46,6 +46,8 @@ public class BatchReplicatedDataPacket
 
     private boolean _compressed = false;
 
+    private boolean _isBackwardsCompatible = isBackwardsCompatible();
+
     private transient boolean _compressable = false;
 
     private transient boolean _clean = true;
@@ -71,7 +73,10 @@ public class BatchReplicatedDataPacket
     public void readExternalImpl(ObjectInput in, PlatformLogicalVersion endpointLogicalVersion) throws IOException,
             ClassNotFoundException {
         _batch = IOUtils.readObject(in);
-        if(isBackwardsCompatible()) {
+
+        _isBackwardsCompatible = in.readBoolean();
+
+        if(_isBackwardsCompatible) {
             _compressed = in.readBoolean();
             if (_compressed) {
                 _startKey = in.readLong();
@@ -83,7 +88,9 @@ public class BatchReplicatedDataPacket
 
     public void writeExternalImpl(ObjectOutput out, PlatformLogicalVersion endpointLogicalVersion) throws IOException {
         IOUtils.writeObject(out, _batch);
-        if(isBackwardsCompatible()) {
+
+        out.writeBoolean(_isBackwardsCompatible);
+        if(_isBackwardsCompatible) {
             out.writeBoolean(_compressed);
             if (_compressed) {
                 out.writeLong(_startKey);
