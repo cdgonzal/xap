@@ -3573,6 +3573,17 @@ public class SpaceImpl extends AbstractService implements IRemoteSpace, IInterna
             return false;
         }
 
+        if (_clusterInfo.getNumberOfBackups() != 1) {
+            _logger.info("Couldn't demote to backup - cluster should be configured with exactly one backup, backups: (" + _clusterInfo.getNumberOfBackups() + ")");
+            return false;
+        }
+
+        //TODO check if leaderSelector is available (i.e. is Primary Backup mode)
+        if (!_leaderSelector.getClass().getName().equals(LEADER_SELECTOR_HANDLER_CLASS_NAME)) {
+            _logger.info("Primary demotion is only supported with Zookeeper leader election.");
+            return false;
+        }
+
         List<ReplicationStatistics.OutgoingChannel> backupChannels = getHolder().getReplicationStatistics().getOutgoingReplication().getChannels(ReplicationStatistics.ReplicationMode.BACKUP_SPACE);
         if (backupChannels.size() != 1) {
             //more than one backup
@@ -3598,12 +3609,13 @@ public class SpaceImpl extends AbstractService implements IRemoteSpace, IInterna
 
             long lastKeyInRedoLog = getHolder().getReplicationStatistics().getOutgoingReplication().getLastKeyInRedoLog();
 
-            if (backupChannel.getLastConfirmedKeyFromTarget() != lastKeyInRedoLog) {
+            if (getHolder().getReplicationStatistics().getOutgoingReplication().getChannels(ReplicationStatistics.ReplicationMode.BACKUP_SPACE).get(0).getLastConfirmedKeyFromTarget() != lastKeyInRedoLog) {
                 //Backup is not synced
                 _logger.info("Couldn't demote to backup - backup is not synced ("+backupChannel.getLastConfirmedKeyFromTarget()+" != "+lastKeyInRedoLog+")");
                 return false;
             }
 
+            _logger.info("size during demote = "+getHolder().getReplicationStatistics().getOutgoingReplication().getRedoLogSize());
             //TODO recheck above preconditions again after entering quiesce mode
             //Wait timeout if necessary (e.g. wait for replication from primary to backup)
 
@@ -3631,7 +3643,7 @@ public class SpaceImpl extends AbstractService implements IRemoteSpace, IInterna
 
         } finally {
             //TODO if failed, need to reopen connections
-            _logger.info("Demoting to backing finished, exiting quiesce mode...");
+            _logger.info("Demoting to backup finished, exiting quiesce mode...");
             getQuiesceHandler().unquiesce();
         }
 
