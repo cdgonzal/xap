@@ -72,7 +72,6 @@ import com.j_spaces.core.filters.ReplicationStatistics.ReplicationMode;
 import com.j_spaces.core.filters.ReplicationStatistics.ReplicationOperatingMode;
 
 import java.rmi.RemoteException;
-import java.text.DecimalFormat;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.Future;
@@ -806,8 +805,7 @@ public abstract class AbstractReplicationSourceChannel
     private Future replicateBatchAsyncAfterChannelFilter(
             List<IReplicationOrderedPacket> packets, final IAsyncReplicationListener listener) throws RemoteException {
         final List<IReplicationOrderedPacket> finalPackets = invokeOutputFilterIfNeeded(packets);
-        final boolean finestLoggable = _specificLogger.isLoggable(Level.FINEST);
-        if (finestLoggable)
+        if (_specificLogger.isLoggable(Level.FINEST))
             _specificLogger.finest("Replicating filtered packets: "
                     + ReplicationLogUtils.packetsToLogString(finalPackets));
 
@@ -818,34 +816,8 @@ public abstract class AbstractReplicationSourceChannel
 
             batchPacket.setBatch(finalPackets);
 
-            if(_isNetworkCompressionEnabled) {
-
-                final int originalSize = finalPackets.size();
-
-                if(finestLoggable){
-                    _specificLogger.finest("Compressing batch...");
-                }
-
+            if(_isNetworkCompressionEnabled)
                 batchPacket.compressBatch();
-
-                if (finestLoggable) {
-
-                    double compressionRatio = (double) batchPacket.getBatch().size() / originalSize;
-
-                    String prefix = batchPacket.isCompressed() ? "Finished batch compression." : "Batch contains no discarded packets.";
-
-                    String msg =  prefix + " compressionRatio=" + new DecimalFormat("#.##").format(compressionRatio);
-
-                    _specificLogger.finest(msg);
-
-                }
-            }
-
-            else {
-                if(finestLoggable){
-                    _specificLogger.finest("Discarded packets network compression is disabled");
-                }
-            }
 
             AsyncFuture<Object> processResultFuture = getConnection().dispatchAsync(batchPacket);
             final ReplicateFuture resultFuture = new ReplicateFuture();
