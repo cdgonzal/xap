@@ -46,7 +46,7 @@ public class BatchReplicatedDataPacket
 
     private boolean _compressed = false;
 
-    private boolean _isBackwardsCompatible = isBackwardsCompatible();
+    private boolean _isBackwardsCompatible = LRMIInvocationContext.getEndpointLogicalVersion().greaterOrEquals(PlatformLogicalVersion.v12_3_1);
 
     private transient boolean _compressable = false;
 
@@ -66,7 +66,7 @@ public class BatchReplicatedDataPacket
     @Override
     public Object accept(IIncomingReplicationFacade replicationFacade) {
         IReplicationTargetGroup targetGroup = replicationFacade.getReplicationTargetGroup(getGroupName());
-        if(isBackwardsCompatible() && _compressed) return targetGroup.processBatch(getSourceLookupName(), getSourceUniqueId(), decompressBatch());
+        if(_isBackwardsCompatible && _compressed) return targetGroup.processBatch(getSourceLookupName(), getSourceUniqueId(), decompressBatch());
         return targetGroup.processBatch(getSourceLookupName(), getSourceUniqueId(), _batch);
     }
 
@@ -98,12 +98,6 @@ public class BatchReplicatedDataPacket
                 out.writeInt(_totalDiscardedPacketsKeys);
             }
         }
-    }
-
-    private boolean isBackwardsCompatible(){
-        PlatformLogicalVersion version = LRMIInvocationContext.getEndpointLogicalVersion();
-
-        return version.greaterOrEquals(PlatformLogicalVersion.v12_3_1);
     }
 
     public void setBatch(List<IReplicationOrderedPacket> batch) {
@@ -138,6 +132,7 @@ public class BatchReplicatedDataPacket
         _totalBatchKeySize = 0;
         _totalDiscardedPacketsKeys = 0;
         _compressable = false;
+        _isBackwardsCompatible = false;
     }
 
     @Override
@@ -152,7 +147,7 @@ public class BatchReplicatedDataPacket
 
 //        System.out.println(toString());
 
-        if(!isBackwardsCompatible() || !_compressable || _compressed) return;
+        if(!_isBackwardsCompatible || !_compressable || _compressed) return;
 
         Iterator<IReplicationOrderedPacket> it = _batch.listIterator();
 
