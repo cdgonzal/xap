@@ -18,14 +18,12 @@ package com.gigaspaces.internal.cluster.node.impl.packets;
 
 import com.gigaspaces.internal.cluster.node.impl.IIncomingReplicationFacade;
 import com.gigaspaces.internal.cluster.node.impl.backlog.globalorder.GlobalOrderDiscardedReplicationPacket;
-import com.gigaspaces.internal.cluster.node.impl.backlog.multibucketsinglefile.DeletedMultiBucketOrderedPacket;
-import com.gigaspaces.internal.cluster.node.impl.backlog.multibucketsinglefile.DiscardedMultiBucketOrderedPacket;
-import com.gigaspaces.internal.cluster.node.impl.backlog.multibucketsinglefile.DummyDiscardedOrderedPacket;
 import com.gigaspaces.internal.cluster.node.impl.groups.IReplicationTargetGroup;
 import com.gigaspaces.internal.cluster.node.impl.router.AbstractGroupNameReplicationPacket;
 import com.gigaspaces.internal.io.IOUtils;
 import com.gigaspaces.internal.utils.Textualizer;
 import com.gigaspaces.internal.version.PlatformLogicalVersion;
+import com.gigaspaces.lrmi.LRMIInvocationContext;
 
 import java.io.IOException;
 import java.io.ObjectInput;
@@ -33,7 +31,6 @@ import java.io.ObjectOutput;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.ListIterator;
 
 @com.gigaspaces.api.InternalApi
 public class BatchReplicatedDataPacket
@@ -67,29 +64,39 @@ public class BatchReplicatedDataPacket
     @Override
     public Object accept(IIncomingReplicationFacade replicationFacade) {
         IReplicationTargetGroup targetGroup = replicationFacade.getReplicationTargetGroup(getGroupName());
-        if(_compressed) return targetGroup.processBatch(getSourceLookupName(), getSourceUniqueId(), decompressBatch());
+        if(isBackwardsCompatible() && _compressed) return targetGroup.processBatch(getSourceLookupName(), getSourceUniqueId(), decompressBatch());
         return targetGroup.processBatch(getSourceLookupName(), getSourceUniqueId(), _batch);
     }
 
     public void readExternalImpl(ObjectInput in, PlatformLogicalVersion endpointLogicalVersion) throws IOException,
             ClassNotFoundException {
         _batch = IOUtils.readObject(in);
-        _compressed = in.readBoolean();
-        if(_compressed) {
-            _startKey = in.readLong();
-            _totalBatchKeySize = in.readInt();
-            _totalDiscardedPacketsKeys = in.readInt();
+        if(isBackwardsCompatible()) {
+            _compressed = in.readBoolean();
+            if (_compressed) {
+                _startKey = in.readLong();
+                _totalBatchKeySize = in.readInt();
+                _totalDiscardedPacketsKeys = in.readInt();
+            }
         }
     }
 
     public void writeExternalImpl(ObjectOutput out, PlatformLogicalVersion endpointLogicalVersion) throws IOException {
         IOUtils.writeObject(out, _batch);
-        out.writeBoolean(_compressed);
-        if(_compressed) {
-            out.writeLong(_startKey);
-            out.writeInt(_totalBatchKeySize);
-            out.writeInt(_totalDiscardedPacketsKeys);
+        if(isBackwardsCompatible()) {
+            out.writeBoolean(_compressed);
+            if (_compressed) {
+                out.writeLong(_startKey);
+                out.writeInt(_totalBatchKeySize);
+                out.writeInt(_totalDiscardedPacketsKeys);
+            }
         }
+    }
+
+    private boolean isBackwardsCompatible(){
+        PlatformLogicalVersion version = LRMIInvocationContext.getEndpointLogicalVersion();
+
+        return version.greaterOrEquals(PlatformLogicalVersion.v12_3_1);
     }
 
     public void setBatch(List<IReplicationOrderedPacket> batch) {
@@ -138,7 +145,7 @@ public class BatchReplicatedDataPacket
 
 //        System.out.println(toString());
 
-        if(_compressed || !_compressable) return;
+        if(!isBackwardsCompatible() || !_compressable || _compressed) return;
 
         Iterator<IReplicationOrderedPacket> it = _batch.listIterator();
 
@@ -202,9 +209,9 @@ public class BatchReplicatedDataPacket
     }
 
     private GlobalOrderDiscardedReplicationPacket createDiscardedPacket(long startKey, long endKey){
-        GlobalOrderDiscardedReplicationPacket p = new GlobalOrderDiscardedReplicationPacket(startKey);
-        p.setEndKey(endKey);
-        return p;
+        GlobalOrderDiscardedReplicationPacket packet = new GlobalOrderDiscardedReplicationPacket(startKey);
+        packet.setEndKey(endKey);
+        return packet;
     }
 
     @Override
