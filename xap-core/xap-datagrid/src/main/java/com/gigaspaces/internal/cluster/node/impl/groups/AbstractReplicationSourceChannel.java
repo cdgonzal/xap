@@ -72,6 +72,7 @@ import com.j_spaces.core.filters.ReplicationStatistics.ReplicationMode;
 import com.j_spaces.core.filters.ReplicationStatistics.ReplicationOperatingMode;
 
 import java.rmi.RemoteException;
+import java.text.DecimalFormat;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.Future;
@@ -116,6 +117,7 @@ public abstract class AbstractReplicationSourceChannel
     private final int _inconsistentStateRetries;
     private final ReplicationMode _channelType;
     private final Object _customBacklogMetadata;
+    private final boolean _isNetworkCompressionEnabled;
 
     protected final SegmentedAtomicInteger _statisticsCounter = new SegmentedAtomicInteger();
     protected final ThreadLocalPool<ReplicatedDataPacketResource> _packetsPool;
@@ -168,6 +170,7 @@ public abstract class AbstractReplicationSourceChannel
         _receivedTrafficStatistics = new StatisticsHolder<Long>(50, 0L);
         _generatedTrafficStatistics.addSample(SystemTime.timeMillis(), 0L);
         _receivedTrafficStatistics.addSample(SystemTime.timeMillis(), 0L);
+        _isNetworkCompressionEnabled = groupConfig.getConfig().isNetworkCompressionEnabled();
 
         _packetsPool = new ThreadLocalPool<ReplicatedDataPacketResource>(new PoolFactory<ReplicatedDataPacketResource>() {
             public ReplicatedDataPacketResource create() {
@@ -803,7 +806,8 @@ public abstract class AbstractReplicationSourceChannel
     private Future replicateBatchAsyncAfterChannelFilter(
             List<IReplicationOrderedPacket> packets, final IAsyncReplicationListener listener) throws RemoteException {
         final List<IReplicationOrderedPacket> finalPackets = invokeOutputFilterIfNeeded(packets);
-        if (_specificLogger.isLoggable(Level.FINEST))
+        final boolean finest = _specificLogger.isLoggable(Level.FINEST);
+        if (finest)
             _specificLogger.finest("Replicating filtered packets: "
                     + ReplicationLogUtils.packetsToLogString(finalPackets));
 
@@ -814,7 +818,28 @@ public abstract class AbstractReplicationSourceChannel
 
             batchPacket.setBatch(finalPackets);
 
-            batchPacket.compressBatch();
+            if(_isNetworkCompressionEnabled) {
+
+                final int originalSize = finalPackets.size();
+
+                if(finest){
+                    _specificLogger.finest("Compressing batch...");
+                }
+
+                batchPacket.compressBatch();
+
+                if (_specificLogger.isLoggable(Level.FINEST)) {
+
+                    double compressionRatio = (double) batchPacket.getBatch().size() / originalSize;
+
+                    String prefix = batchPacket.isCompressed() ? "Finished batch compression." : "Batch contains no discarded packets.";
+
+                    String msg =  prefix + " compressionRatio=" + new DecimalFormat("#.##").format(compressionRatio);
+
+                    _specificLogger.finest(msg);
+
+                }
+            }
 
             AsyncFuture<Object> processResultFuture = getConnection().dispatchAsync(batchPacket);
             final ReplicateFuture resultFuture = new ReplicateFuture();

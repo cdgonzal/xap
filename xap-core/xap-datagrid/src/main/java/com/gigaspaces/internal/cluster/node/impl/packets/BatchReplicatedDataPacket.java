@@ -46,8 +46,6 @@ public class BatchReplicatedDataPacket
 
     private boolean _compressed = false;
 
-    private boolean _isBackwardsCompatible = LRMIInvocationContext.getEndpointLogicalVersion().greaterOrEquals(PlatformLogicalVersion.v12_3_1);
-
     private transient boolean _compressable = false;
 
     private transient boolean _clean = true;
@@ -66,7 +64,7 @@ public class BatchReplicatedDataPacket
     @Override
     public Object accept(IIncomingReplicationFacade replicationFacade) {
         IReplicationTargetGroup targetGroup = replicationFacade.getReplicationTargetGroup(getGroupName());
-        if(_isBackwardsCompatible && _compressed) return targetGroup.processBatch(getSourceLookupName(), getSourceUniqueId(), decompressBatch());
+        if(isBackwardsCompatible() && _compressed) return targetGroup.processBatch(getSourceLookupName(), getSourceUniqueId(), decompressBatch());
         return targetGroup.processBatch(getSourceLookupName(), getSourceUniqueId(), _batch);
     }
 
@@ -74,9 +72,7 @@ public class BatchReplicatedDataPacket
             ClassNotFoundException {
         _batch = IOUtils.readObject(in);
 
-        _isBackwardsCompatible = in.readBoolean();
-
-        if(_isBackwardsCompatible) {
+        if(isBackwardsCompatible()) {
             _compressed = in.readBoolean();
             if (_compressed) {
                 _startKey = in.readLong();
@@ -89,8 +85,7 @@ public class BatchReplicatedDataPacket
     public void writeExternalImpl(ObjectOutput out, PlatformLogicalVersion endpointLogicalVersion) throws IOException {
         IOUtils.writeObject(out, _batch);
 
-        out.writeBoolean(_isBackwardsCompatible);
-        if(_isBackwardsCompatible) {
+        if(isBackwardsCompatible()) {
             out.writeBoolean(_compressed);
             if (_compressed) {
                 out.writeLong(_startKey);
@@ -120,6 +115,10 @@ public class BatchReplicatedDataPacket
         return false;
     }
 
+    private boolean isBackwardsCompatible(){
+        return LRMIInvocationContext.getEndpointLogicalVersion().greaterOrEquals(PlatformLogicalVersion.v12_3_1);
+    }
+
     public List<IReplicationOrderedPacket> getBatch() {
         return _batch;
     }
@@ -132,7 +131,6 @@ public class BatchReplicatedDataPacket
         _totalBatchKeySize = 0;
         _totalDiscardedPacketsKeys = 0;
         _compressable = false;
-        _isBackwardsCompatible = false;
     }
 
     @Override
@@ -143,11 +141,7 @@ public class BatchReplicatedDataPacket
 
     public void compressBatch(){
 
-//        System.out.println("~~~~~~~~START COMPRESSION~~~~~~~~~~~~~~~~" + Thread.currentThread().getName());
-
-//        System.out.println(toString());
-
-        if(!_isBackwardsCompatible || !_compressable || _compressed) return;
+        if(!isBackwardsCompatible() || !_compressable || _compressed) return;
 
         Iterator<IReplicationOrderedPacket> it = _batch.listIterator();
 
@@ -169,15 +163,9 @@ public class BatchReplicatedDataPacket
         }
 
         _compressed = true;
-
-
-//        System.out.println("~~~~~~~~END COMPRESSION~~~~~~~~~~~~~~~~" + Thread.currentThread().getName());
-//        System.out.println(toString());
     }
 
     public List<IReplicationOrderedPacket> decompressBatch() {
-//        System.out.println("~~~~~~~~START DECOMPRESSION~~~~~~~~~~~~~~~~" + Thread.currentThread().getName());
-//        System.out.println(toString());
 
         if(_compressed){
 
@@ -187,7 +175,6 @@ public class BatchReplicatedDataPacket
             long endKey = _startKey + _totalBatchKeySize - 1;
 
             for(IReplicationOrderedPacket packet : _batch){
-//                if(!packet.getData().isSingleEntryData()) System.out.println("~~~~~~~~MultipleOperationType~~~~~~~~~~~~~~~~" + packet.getData().getMultipleOperationType());
                 if(currentStartKey < packet.getKey()){
                     result.add(createDiscardedPacket(currentStartKey,packet.getKey() - 1));
                 }
@@ -198,11 +185,6 @@ public class BatchReplicatedDataPacket
             if(currentStartKey < endKey){
                 result.add(createDiscardedPacket(currentStartKey, endKey));
             }
-
-//            System.out.println("~~~~~~~~END DECOMPRESSION~~~~~~~~~~~~~~~~" + Thread.currentThread().getName());
-//
-//
-//            System.out.println("-----------result: " + result);
 
             return result;
         }
