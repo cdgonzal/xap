@@ -806,8 +806,8 @@ public abstract class AbstractReplicationSourceChannel
     private Future replicateBatchAsyncAfterChannelFilter(
             List<IReplicationOrderedPacket> packets, final IAsyncReplicationListener listener) throws RemoteException {
         final List<IReplicationOrderedPacket> finalPackets = invokeOutputFilterIfNeeded(packets);
-        final boolean finest = _specificLogger.isLoggable(Level.FINEST);
-        if (finest)
+        final boolean finestLoggable = _specificLogger.isLoggable(Level.FINEST);
+        if (finestLoggable)
             _specificLogger.finest("Replicating filtered packets: "
                     + ReplicationLogUtils.packetsToLogString(finalPackets));
 
@@ -822,13 +822,13 @@ public abstract class AbstractReplicationSourceChannel
 
                 final int originalSize = finalPackets.size();
 
-                if(finest){
+                if(finestLoggable){
                     _specificLogger.finest("Compressing batch...");
                 }
 
                 batchPacket.compressBatch();
 
-                if (_specificLogger.isLoggable(Level.FINEST)) {
+                if (finestLoggable) {
 
                     double compressionRatio = (double) batchPacket.getBatch().size() / originalSize;
 
@@ -838,6 +838,12 @@ public abstract class AbstractReplicationSourceChannel
 
                     _specificLogger.finest(msg);
 
+                }
+            }
+
+            else {
+                if(finestLoggable){
+                    _specificLogger.finest("Discarded packets network compression is disabled");
                 }
             }
 
