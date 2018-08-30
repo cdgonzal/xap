@@ -16,7 +16,7 @@
     </bean>
 
     <!--
-        A bean representing an embedded space.
+        A bean representing an embedded spacte.
     -->
 
     <os-core:embedded-space id="space" name="${dataGridName}">
